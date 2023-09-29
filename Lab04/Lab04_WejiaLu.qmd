@@ -1,0 +1,149 @@
+---
+title: "PM566 Lab04"
+author: "Wenjia Lu"
+format:
+  html:
+    embed-resources: true
+---
+
+```{r}
+## Q1 Read in the data ##
+# Download and then read in with data.table::fread()
+
+library('R.utils')
+
+if (!file.exists("met_all.gz"))
+  download.file(
+    url = "https://raw.githubusercontent.com/USCbiostats/data-science-data/master/02_met/met_all.gz",
+    destfile = "met_all.gz",
+    method   = "libcurl",
+    timeout  = 60
+    )
+met <- data.table::fread("met_all.gz")
+
+```
+
+
+```{r}
+## Q2 Prepare the data ##
+# Remove T < 17C and make sure no missing data
+library(lubridate)
+met <- met[temp > -17][elev == 9999.0, elev := NA]
+
+# Generate a data var using as.Date()
+met[, week := week(as.Date(paste(year, month, day, sep = "-")))]
+
+# Keep obs of the first week of the month
+met <- met[week == min(week, na.rm = TRUE)]
+
+# Compute the mean by station of the var temp, rh, wind.sp, vis.dist, dew.point, lat, lon, and elev
+met_avg <- met[,.(temp=mean(temp,na.rm=TRUE), rh=mean(rh,na.rm=TRUE), wind.sp=mean(wind.sp,na.rm=TRUE), 
+                vis.dist=mean(vis.dist,na.rm=TRUE), dew.point = mean(dew.point, na.rm=TRUE), lat=mean(lat),
+                lon=mean(lon), elev=mean(elev,na.rm=TRUE)), by="USAFID"]
+
+# Create a region var for NW, SW, NE, SE, based on lon = -98.00 and lat = 39.71 degrees
+met_avg$region <- ifelse(met_avg$lon > -98 & met_avg$lat >39.71, "north east",
+                         ifelse(met_avg$lon > -98 & met_avg$lat < 39.71, "south east",
+                                ifelse(met_avg$lon < -98 & met_avg$lat >39.71, "north west", "south west")))
+table(met_avg$region)
+
+# Create a categorical var for elevation
+met_avg$elev_cat <- ifelse(met_avg$elev> 252, "high", "low")
+
+```
+
+
+```{r}
+## Q3 Use `geom_violin` to examine the wind speed and dew point by region ##
+
+library(tidyverse)
+met_avg %>%
+  filter(!(region %in% NA)) %>%
+ggplot() +
+  geom_violin(mapping = aes(y=wind.sp, x=1)) +
+  facet_wrap(~region, nrow=2)
+
+met_avg %>%
+  filter(!(region %in% NA)) %>%
+ggplot() +
+  geom_boxplot(mapping = aes(y=rh, fill=region)) +
+  facet_wrap(~region, nrow=2)
+
+```
+
+```{r}
+## Q4 Use `geom_jitter` with `stat_smooth` to examine the association between dew point and wind speed by region ##
+
+met_avg %>%
+filter(!(region %in% NA)) %>%
+  ggplot(mapping = aes(x=dew.point, y=rh, color=region)) +
+  geom_jitter() + 
+  stat_smooth(method=lm)
+
+```
+
+
+```{r}
+## Q5 Use `geom_bar` to create barplots of the weather stations by elevation category colored by region ##
+
+met_avg %>%
+filter(!(region %in% NA)) %>%
+  ggplot() +
+  geom_bar(mapping=aes(x=elev_cat,fill=region), position = "dodge") +
+  scale_fill_brewer(palette = "PuOr") +
+  labs(title="Number of weather stations by elevation category and region", x="Elevation Category", y=
+         "Count") +
+  theme_bw()
+
+```
+
+
+```{r}
+## Q6 Use `stat_summary` to examine mean dew point and wind speed by region with sd error bars ##
+met_avg %>%
+filter(!(region %in% NA)) %>%
+  ggplot(mapping=aes(x=region, y=dew.point)) +
+  stat_summary(fun.data="mean_sdl", geom="errorbar") +
+  stat_summary(fun.data="mean_sdl")
+
+met_avg %>%
+filter(!(region %in% NA)) %>%
+  ggplot(mapping=aes(x=region, y=wind.sp)) +
+  stat_summary(fun.data="mean_sdl", geom="errorbar") +
+  stat_summary(fun.data="mean_sdl")
+
+```
+
+
+```{r}
+## Q7 Make a map showing the spatial trend in relative humidity in the US ##
+
+library(leaflet)
+met_avg <- met_avg[!is.na(rh)]
+rh.pal <- colorNumeric(c('darkgreen','goldenrod','brown'), domain=met_avg$rh)
+
+leaflet(met_avg) %>%
+  addProviderTiles('CartoDB.Positron') %>%
+  addCircles(
+    lat = ~lat, lng = ~lon,
+    label = ~paste0(round(rh,2), ' rh'), color = ~ rh.pal(rh),
+    opacity = 1, fillOpacity = 1, radius = 500) %>%
+  addLegend('bottomleft', pal=temp.pal, values=met_avg$rh, title='Relative Humidity', opacity=1)
+
+```
+
+
+```{r}
+## Q8 Use a ggplot extension ##
+# Using patchwork
+
+library(patchwork)
+
+p1 <- ggplot(met_avg) + geom_point(aes(elev, temp))
+p2 <- ggplot(met_avg) + geom_boxplot(aes(elev, temp, group = region))
+p3 <- ggplot(met_avg) + geom_smooth(aes(elev, temp))
+
+(p1 | p2 / p3)
+
+```
+
