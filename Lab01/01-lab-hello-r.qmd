@@ -1,0 +1,87 @@
+---
+title: "PM566 Lab01"
+format: html
+editor: Wenjia Lu
+---
+
+## Exercise 1
+
+```{r}
+## Q1 How many rows and cols? What are the variables included? ##
+
+library(datasauRus)
+library(tidyverse)
+
+datasaurus_dozen %>% 
+  count(dataset)
+table(datasaurus_dozen$dataset)
+
+#The dataser has 1846 rows, 142 columns and 13 variables
+#The varaibles including 'away', 'bullseye', 'circle', 'dino', 'dots', 'h_lines', 'high_lines', 'slant_down', 'slant_up', 'star', 'v_lines', 'wide_lines', 'x_shape'
+
+```
+
+## Exercise 2
+
+```{r}
+## Q2 dino dataset: Plot y vs. x. Calculate the correlation between x and y? ##
+
+dino_data <- datasaurus_dozen %>%
+    filter(dataset == "dino")
+ggplot(data = dino_data, mapping = aes(x = x, y = y)) + geom_point()
+
+dino_data %>%
+summarize(r = cor(x, y))
+
+# -0.06447185
+
+```
+
+## Exercise 3
+
+```{r}
+## Q3 star dataset: Plot y vs. x. Calculate the correlation between x and y? ##
+
+star_data <- datasaurus_dozen %>%
+    filter(dataset == "star")
+ggplot(data = star_data, mapping = aes(x = x, y = y)) + geom_point()
+
+star_data %>%
+summarize(r = cor(x, y))
+
+# -0.0629611 > -0.06447185(Q2)
+
+```
+
+## Exercise 4
+
+```{r}
+## Q4 circle dataset: Plot y vs. x. Calculate the correlation between x and y? ##
+
+circle_data <- datasaurus_dozen %>%
+    filter(dataset == "circle")
+ggplot(data = circle_data, mapping = aes(x = x, y = y)) + geom_point()
+
+circle_data %>%
+summarize(r = cor(x, y))
+
+# -0.06834336 < -0.06447185(Q2)
+
+```
+
+## Exercise 5
+
+```{r}
+## Q5 plot all dataset at once and generate all correlation coefficients ##
+
+ggplot(datasaurus_dozen, aes(x = x, y = y, color = dataset)) + 
+    geom_point() +
+    facet_wrap( ~ dataset, ncol = 3) +
+    theme (legend.position = "none")
+
+datasaurus_dozen %>%
+    group_by(dataset) %>%
+    summarize(r = cor(x, y))
+
+```
+
