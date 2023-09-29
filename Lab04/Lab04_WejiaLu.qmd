@@ -71,6 +71,7 @@ ggplot() +
 
 ```
 
+
 ```{r}
 ## Q4 Use `geom_jitter` with `stat_smooth` to examine the association between dew point and wind speed by region ##
 
@@ -128,7 +129,7 @@ leaflet(met_avg) %>%
     lat = ~lat, lng = ~lon,
     label = ~paste0(round(rh,2), ' rh'), color = ~ rh.pal(rh),
     opacity = 1, fillOpacity = 1, radius = 500) %>%
-  addLegend('bottomleft', pal=temp.pal, values=met_avg$rh, title='Relative Humidity', opacity=1)
+  addLegend('bottomleft', pal=rh.pal, values=met_avg$rh, title='Relative Humidity', opacity=1)
 
 ```
 
