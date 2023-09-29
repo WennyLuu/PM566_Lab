@@ -8,6 +8,7 @@ format:
 
 ```{r}
 ## Load the data ##
+library('R.utils')
 library(data.table)
 library(dtplyr)
 library(dplyr)
@@ -26,8 +27,8 @@ if (!file.exists(tmp)) {
   )
 }
 # Read the data
-dat <- fread(tmp)
-head(dat)
+met <- fread(tmp)
+head(met)
 
 # Download the data
 stations <- fread("ftp://ftp.ncdc.noaa.gov/pub/data/noaa/isd-history.csv")
@@ -45,13 +46,14 @@ stations[, n := 1:.N, by = .(USAF)]
 stations <- stations[n == 1,][, n := NULL]
 # Merge the data with stations
 df<-merge(
-  x=met,
-  y=stations,
+  x = met,
+  y = stations,
   all.x = T,
   all.y = F,
   by.x = "USAFID",
   by.y = "USAF"
 )
+head(df)
 
 ```
 
@@ -137,7 +139,7 @@ hashtable <- distinct(hashtable, USAFID, .keep_all = TRUE)
 
 map2 <- merge(x = map, y = hashtable, by.x = 'USAFID', by.y = "USAFID", all.x = TRUE, all.y = FALSE)
 
-mp.pal <- colorNumeric(c('darkgreen','goldenrod','brown'), domain=map2$midpoint)
+mp.pal <- colorNumeric(c('red','yellow','blue'), domain=map2$midpoint)
 
 tempmap <- leaflet(map2) %>% 
 
@@ -164,10 +166,10 @@ tempmap
 # Using the quantile() function, generate a summary table that shows the number of states included, average temperature, wind-speed, and atmospheric pressure by the variable “average temperature level,” which you’ll need to create.
 # Start by computing the states’ average temperature. Use that measurement to classify them according to the following criteria:low: temp < 20 Mid: temp >= 20 and temp < 25 High: temp >= 25
 
-df[,state_temp :=mean(temp,na.rm=T),by= STATE]
-df[,temp_cat   :=fifelse(
-  state_temp<20,"low-temp",
-  fifelse(state_temp<25,"mid-temp","high_temp"))
+df[,state_temp := mean(temp,na.rm=T), by= STATE]
+df[,temp_cat := fifelse(
+  state_temp < 20,"low-temp",
+  fifelse(state_temp < 25, "mid-temp","high_temp"))
   ]
 
 df[, .(
@@ -180,7 +182,7 @@ df[, .(
   mean_atmpress = mean(atm.press, na.rm = TRUE)
 ), by = temp_cat]
 
-table(met$temp_cat,useNA = "always")
+table(df$temp_cat, useNA = "always")
 
 ```
 
