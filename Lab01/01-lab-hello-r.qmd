@@ -1,7 +1,7 @@
 ---
 title: "PM566 Lab01"
 format: html
-editor: Wenjia Lu
+editor: “Wenjia Lu”
 ---
 
 ## Exercise 1
