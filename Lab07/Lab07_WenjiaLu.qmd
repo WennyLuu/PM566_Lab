@@ -1,0 +1,130 @@
+---
+title: "PM566 Lab07"
+author: "Wenjia Lu"
+format:
+  html:
+    embed-resources: true
+---
+
+```{r}
+## Set packages and download data ##
+
+library(httr)
+library(xml2)
+library(stringr)
+
+```
+
+
+```{r}
+## Q1 How many sars-cov-2 papers? ##
+# Build an automatic counter of sars-cov-2 papers using PubMed.
+
+# Downloading the website 
+website <- xml2::read_html("https://pubmed.ncbi.nlm.nih.gov/?term=sars-cov-2")
+# Finding the counts 
+counts <- xml2::xml_find_first(website, "/html/body/main/div[9]/div[2]/div[2]/div[1]")
+# Turning it into text 
+counts <- as.character(counts)
+# Extracting the data using regex 
+stringr::str_extract(counts, "[0-9,]+")
+stringr::str_extract(counts, "[[:digit:],]+")
+
+```
+
+
+```{r}
+## Q2 Academic publications on COVID19 and Hawaii ##
+
+query_ids <- GET(
+  url   = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi",
+  query = list(
+    db ="pubmed",
+    term ="covid19 hawaii",
+    retmax = 1000)
+)
+# Extracting the content of the response of GET
+ids <- httr::content(query_ids)
+ids
+
+ids_list <- xml2::as_list(ids)
+
+```
+
+
+```{r}
+## Q3 Get details about the articles ##
+
+# Turn the result into a character vector
+ids <- as.character(ids)
+# Find all the ids 
+ids <- stringr::str_extract_all(ids, "<Id>[[:digit:]]+</Id>")[[1]]
+# Remove all the leading and trailing <Id> </Id>. Make use of "|"
+ids <- stringr::str_remove_all(ids, "</?Id>")
+ids <- stringr::str_remove_all(ids, "<Id>|</Id>")
+head(ids)
+
+publications <- GET(
+  url = "https://eutils.ncbi.nlm.nih.gov/",
+  path = "entrez/eutils/efetch.fcgi",
+  query = list(
+    db = "pubmed",
+    id = I(paste(ids, collapse=",")),
+    retmax = 1000,
+    rettype = "abstract"
+    )
+)
+# Turning the output into character vector
+publications <- httr::content(publications)
+publications_txt <- as.character(publications)
+
+```
+
+
+```{r}
+## Q4 Distribution of universities, schools, and departments ##
+# Write a regular expression that captures all such instances
+institution <- stringr::str_extract_all(
+  str_to_lower(publications_txt),
+  "[[:alpha:]-]+university|university\\s+of\\s+(southern|new|northern|the)?\\s*[[:alpha:]-]+|[[:alpha:]-]+\\s+institute\\s+of\\s+[[:alpha:]-]+"
+  ) 
+
+institution <- unlist(institution)
+table(institution)
+
+# Repeat the exercise and this time focus on schools and departments in the form of 'School of…', 'Department of…'
+schools_and_deps <- str_extract_all(
+  str_to_lower(publications_txt),
+  "[[:alpha:]-]+\\s+school\\s+of\\s+(the)?\\s*[[:alpha:]-]+\\s|[[:alpha:]-]+\\s+department\\s+of\\s+[[:alpha:]-]+\\s"
+  )
+table(schools_and_deps)
+
+```
+
+
+```{r}
+## Q5 Form a database ##
+
+pub_char_list <- xml2::xml_children(publications)
+pub_char_list <- sapply(pub_char_list, as.character)
+
+abstracts <- stringr::str_extract(pub_char_list, "<Abstract>(\\n|.)+</Abstract>")
+abstracts <- stringr::str_remove_all(abstracts, "</?[[:alnum:]]+>")
+abstracts <- stringr::str_replace_all(abstracts, "\\s+", " ")
+table(is.na(abstracts))
+
+# How many of these don't have an abstract? 
+titles <- str_extract(pub_char_list, "<ArticleTitle>(\\n|.)+</ArticleTitle>")
+titles <- str_remove_all(titles, "</?[[:alnum:]]+>")
+table(is.na(titles))
+# There are 9 articles without abstracts.
+
+database <- data.frame(
+  PubMedID  = ids,
+  Title     = titles,
+  Abstracts = abstracts
+)
+knitr::kable(database[1:5,])
+
+```
+
